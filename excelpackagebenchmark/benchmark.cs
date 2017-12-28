@@ -32,7 +32,8 @@ namespace excelpackagebenchmark
 		private CellDefinition[] _arrayDataSet;
 		private DataSetDefinition _datasetMethod;
 		private ExcelComponentDefinition _excelComponent;
-
+		private int _dataRowCount;
+		private int _dataColumnCount;
 		
 		Stopwatch _stopWatch;
 		
@@ -94,7 +95,7 @@ namespace excelpackagebenchmark
 					npoi_write();
 					break;					
 				case ExcelComponentDefinition.SpreadsheetLight:
-					spreadsheetlight_write();
+					//spreadsheetlight_write();
 					break;
 			}
 		}
@@ -259,43 +260,57 @@ namespace excelpackagebenchmark
 			ExcelWorksheet sht = epplus.Workbook.Worksheets[worksheetname];
 			_stopWatch.Stop();
 			PrintTime("epplus_read() - assign EPPlus.worksheet to variable");	
-				
-			for (int testIndex = 0;
-			     testIndex < 5;
-			     testIndex++) {
-				_concurrentBagDataSet = new ConcurrentBag<CellDefinition>();
-				//test the performance of reading cells				
-				_stopWatch.Reset();
-				_stopWatch.Start();				
-				Parallel.For(0, _dataTable.Rows.Count, rowIndex => {
-					for (int colIndex = 0;
-					     colIndex < _dataTable.Columns.Count;
-					     colIndex++) {
-						CellDefinition cl;
-						cl.RowNumber = rowIndex;
-						cl.ColumnNumber = colIndex;
-						cl.Text = sht.Cells[rowIndex + 1, colIndex + 1].Text;
-						_concurrentBagDataSet.Add(cl);
-					}
-				});	
-				_stopWatch.Stop();
-				PrintTime("epplus_read() - Read cells from EPPlus to ConcurrentBag custom object");
-			}
 			
 			_stopWatch.Reset();
 			_stopWatch.Start();				
-			Parallel.For(0, _dataTable.Rows.Count, rowIndex => {
-				DataRow dr = _dataTable.Rows[rowIndex];
-				for (int colIndex = 0;
+			switch (DataSetMethod) {
+				case DataSetDefinition.DataTable:
+					Parallel.For(0, _dataTable.Rows.Count, rowIndex => {
+						DataRow dr = _dataTable.Rows[rowIndex];
+						for (int colIndex = 0;
 					     colIndex < _dataTable.Columns.Count;
 					     colIndex++) {
-					lock (_dataTable) {
-						_dataTable.Rows[rowIndex][colIndex] = sht.Cells[rowIndex + 1, colIndex + 1].Text;
-					}
-				}
-			});	
+							lock (_dataTable) {
+								_dataTable.Rows[rowIndex][colIndex] = sht.Cells[rowIndex + 1, colIndex + 1].Text;
+							}
+						}
+					});	
+					break;
+				case DataSetDefinition.ConcurrentBag:
+					_concurrentBagDataSet = new ConcurrentBag<CellDefinition>();
+					//test the performance of reading cells				
+					Parallel.For(0, _dataTable.Rows.Count, rowIndex => {
+						for (int colIndex = 0;
+					     colIndex < _dataTable.Columns.Count;
+					     colIndex++) {
+							CellDefinition cl;
+							cl.RowNumber = rowIndex;
+							cl.ColumnNumber = colIndex;
+							cl.Text = sht.Cells[rowIndex + 1, colIndex + 1].Text;
+							_concurrentBagDataSet.Add(cl);
+						}
+					});	
+					break;
+				case DataSetDefinition.List:
+					_listDataSet = new List<CellDefinition>();
+					//test the performance of reading cells				
+					Parallel.For(0, _dataTable.Rows.Count, rowIndex => {
+						for (int colIndex = 0;
+					     colIndex < _dataTable.Columns.Count;
+					     colIndex++) {
+							CellDefinition cl;
+							cl.RowNumber = rowIndex;
+							cl.ColumnNumber = colIndex;
+							cl.Text = sht.Cells[rowIndex + 1, colIndex + 1].Text;
+							lock(_listDataSet) {
+								_listDataSet.Add(cl);
+							}
+						}
+					});	
+					break;					
+			}
 			_stopWatch.Stop();
-			PrintTime("epplus_read() - Read cells from EPPlus to datatable");
+			PrintTime("epplus_read() - read file to memory");
 
 			epplus.Dispose();
 		}

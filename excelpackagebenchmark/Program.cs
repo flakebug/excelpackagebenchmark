@@ -17,34 +17,35 @@ namespace excelpackagebenchmark
 		{
 			Console.WriteLine(">>> Excel components benchmark starts <<<");
 			benchmark xlsxbench;
-			
-			//Array
-			xlsxbench = new benchmark();
-			xlsxbench.ExcelComponent = benchmark.ExcelComponentDefinition.EPPlus;
-			xlsxbench.DataSetMethod = benchmark.DataSetDefinition.Array;
-			xlsxbench.GenerateRandomArray(100000,20);
-			xlsxbench.WriteOperation();			
-			
-			//ConcurrentBag
-			xlsxbench = new benchmark();
-			xlsxbench.ExcelComponent = benchmark.ExcelComponentDefinition.EPPlus;
-			xlsxbench.DataSetMethod = benchmark.DataSetDefinition.ConcurrentBag;
-			xlsxbench.GenerateRandomConcurrentBag(100000,20);
-			xlsxbench.WriteOperation();
-			
-			//List
-			xlsxbench = new benchmark();
-			xlsxbench.ExcelComponent = benchmark.ExcelComponentDefinition.EPPlus;
-			xlsxbench.DataSetMethod = benchmark.DataSetDefinition.List;
-			xlsxbench.GenerateRandomList(100000,20);
-			xlsxbench.WriteOperation();
+//			
+//			//Array
+//			xlsxbench = new benchmark();
+//			xlsxbench.ExcelComponent = benchmark.ExcelComponentDefinition.EPPlus;
+//			xlsxbench.DataSetMethod = benchmark.DataSetDefinition.Array;
+//			xlsxbench.GenerateRandomArray(100000,20);
+//			xlsxbench.WriteOperation();			
+//			
+//			//ConcurrentBag
+//			xlsxbench = new benchmark();
+//			xlsxbench.ExcelComponent = benchmark.ExcelComponentDefinition.EPPlus;
+//			xlsxbench.DataSetMethod = benchmark.DataSetDefinition.ConcurrentBag;
+//			xlsxbench.GenerateRandomConcurrentBag(100000,20);
+//			xlsxbench.WriteOperation();
+//			
+//			//List
+//			xlsxbench = new benchmark();
+//			xlsxbench.ExcelComponent = benchmark.ExcelComponentDefinition.EPPlus;
+//			xlsxbench.DataSetMethod = benchmark.DataSetDefinition.List;
+//			xlsxbench.GenerateRandomList(100000,20);
+//			xlsxbench.WriteOperation();
 			
 			//DataTable
 			xlsxbench = new benchmark();
 			xlsxbench.ExcelComponent = benchmark.ExcelComponentDefinition.EPPlus;
-			xlsxbench.DataSetMethod = benchmark.DataSetDefinition.DataTable;
-			xlsxbench.GenerateRandomDataTable(100000,20);
-			xlsxbench.WriteOperation();			
+			xlsxbench.DataSetMethod = benchmark.DataSetDefinition.List;
+			xlsxbench.GenerateRandomList(10000,20);
+			xlsxbench.WriteOperation();		
+			xlsxbench.ReadOperation();
 			
 			Console.WriteLine(">>> Excel components benchmark ends <<<");
 			Console.WriteLine("Press any key to continue");
