@@ -17,33 +17,25 @@ namespace excelpackagebenchmark
 		{
 			Console.WriteLine(">>> Excel components benchmark starts <<<");
 			benchmark xlsxbench;
-//			
-//			//Array
-//			xlsxbench = new benchmark();
-//			xlsxbench.ExcelComponent = benchmark.ExcelComponentDefinition.EPPlus;
-//			xlsxbench.DataSetMethod = benchmark.DataSetDefinition.Array;
-//			xlsxbench.GenerateRandomArray(100000,20);
-//			xlsxbench.WriteOperation();			
-//			
-//			//ConcurrentBag
-//			xlsxbench = new benchmark();
-//			xlsxbench.ExcelComponent = benchmark.ExcelComponentDefinition.EPPlus;
-//			xlsxbench.DataSetMethod = benchmark.DataSetDefinition.ConcurrentBag;
-//			xlsxbench.GenerateRandomConcurrentBag(100000,20);
-//			xlsxbench.WriteOperation();
-//			
-//			//List
-//			xlsxbench = new benchmark();
-//			xlsxbench.ExcelComponent = benchmark.ExcelComponentDefinition.EPPlus;
-//			xlsxbench.DataSetMethod = benchmark.DataSetDefinition.List;
-//			xlsxbench.GenerateRandomList(100000,20);
-//			xlsxbench.WriteOperation();
 			
-			//DataTable
+			const int dataRowCount = 100000;
+			const int dataColCount = 20;
+
+			xlsxbench = new benchmark();
+			xlsxbench.ExcelComponent = benchmark.ExcelComponentDefinition.NPOI;
+			xlsxbench.GenerateRandomDataTable(dataRowCount, dataColCount);
+			xlsxbench.WriteOperation();		
+			xlsxbench.ReadOperation();
+
 			xlsxbench = new benchmark();
 			xlsxbench.ExcelComponent = benchmark.ExcelComponentDefinition.EPPlus;
-			xlsxbench.DataSetMethod = benchmark.DataSetDefinition.List;
-			xlsxbench.GenerateRandomList(10000,20);
+			xlsxbench.GenerateRandomDataTable(dataRowCount, dataColCount);
+			xlsxbench.WriteOperation();		
+			xlsxbench.ReadOperation();
+			
+			xlsxbench = new benchmark();
+			xlsxbench.ExcelComponent = benchmark.ExcelComponentDefinition.ClosedXML;
+			xlsxbench.GenerateRandomDataTable(dataRowCount, dataColCount);
 			xlsxbench.WriteOperation();		
 			xlsxbench.ReadOperation();
 			

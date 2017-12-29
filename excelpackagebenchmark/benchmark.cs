@@ -27,31 +27,20 @@ namespace excelpackagebenchmark
 	{
 		private const string worksheetname = "worksheet";
 		private DataTable _dataTable;
-		private ConcurrentBag<CellDefinition> _concurrentBagDataSet;
-		private List<CellDefinition> _listDataSet;
-		private CellDefinition[] _arrayDataSet;
-		private DataSetDefinition _datasetMethod;
 		private ExcelComponentDefinition _excelComponent;
 		private int _dataRowCount;
 		private int _dataColumnCount;
 		
 		Stopwatch _stopWatch;
-		
-		public enum DataSetDefinition
-		{
-			DataTable,
-			ConcurrentBag,
-			List,
-			Array
-		}
+
 		
 		public enum ExcelComponentDefinition
 		{
 			None,
 			EPPlus,
 			NPOI,
-			SpreadsheetLight,
 			ClosedXML
+			//SpreadsheetLight //expansion for future
 		}
 		
 		public struct CellDefinition
@@ -65,10 +54,7 @@ namespace excelpackagebenchmark
 			get { return _excelComponent; }
 			set { _excelComponent = value; }
 		}
-		public DataSetDefinition DataSetMethod {
-			get { return _datasetMethod; }
-			set { _datasetMethod = value; }
-		}
+
 		public DataTable DataTable {
 			get { return _dataTable; }
 			set { _dataTable = value; }
@@ -93,10 +79,11 @@ namespace excelpackagebenchmark
 					break;
 				case ExcelComponentDefinition.NPOI:
 					npoi_write();
-					break;					
-				case ExcelComponentDefinition.SpreadsheetLight:
-					//spreadsheetlight_write();
-					break;
+					break;		
+//				//expansion for future					
+//				case ExcelComponentDefinition.SpreadsheetLight:
+//					spreadsheetlight_write();
+//					break;
 			}
 		}
 		public void ReadOperation()
@@ -109,14 +96,15 @@ namespace excelpackagebenchmark
 					epplus_read();
 					break;
 				case ExcelComponentDefinition.ClosedXML:
-					//closedxml_write();
+					closedxml_read();
 					break;
 				case ExcelComponentDefinition.NPOI:
-					//npoi_write();
-					break;					
-				case ExcelComponentDefinition.SpreadsheetLight:
-					//spreadsheetlight_write();
-					break;
+					npoi_read();
+					break;	
+//				//Expansion for future					
+//				case ExcelComponentDefinition.SpreadsheetLight:
+//					spreadsheetlight_write();
+//					break;
 			}
 		}
 
@@ -158,6 +146,42 @@ namespace excelpackagebenchmark
 			file.Close();
 			PrintTime("npoi_write() - Save file to disk");			
 		}
+		private void npoi_read()
+		{
+			const string filename = "npoi.xlsx";
+			FileInfo file = new FileInfo(filename);
+			
+			_stopWatch.Reset();
+			_stopWatch.Start();				
+			var workbook = new XSSFWorkbook(file);
+			_stopWatch.Stop();
+			PrintTime("npoi_read() - read filestream to npoi object");	
+			
+			_stopWatch.Reset();
+			_stopWatch.Start();					
+			var sht = workbook.GetSheet(worksheetname);
+			_stopWatch.Stop();
+			PrintTime("npoi_read() - assign npoi.worksheet to variable");
+			
+			//test the performance of filling cells				
+			_stopWatch.Reset();
+			_stopWatch.Start();
+			Parallel.For(0, _dataTable.Rows.Count, rowIndex => {
+				//DataRow dr = _dataTable.Rows[rowIndex];
+				for (int colIndex = 0;
+					     colIndex < _dataTable.Columns.Count;
+					     colIndex++) {
+					lock (sht) {
+						_dataTable.Rows[rowIndex][colIndex] = sht.GetRow(rowIndex).GetCell(colIndex).ToString();
+					}
+				}
+			});			
+			_stopWatch.Stop();
+			PrintTime("npoi_read() - read excel to memory");
+			
+		}
+		
+		
 		private void closedxml_write()
 		{
 			const string filename = "closedxml.xlsx";
@@ -188,6 +212,38 @@ namespace excelpackagebenchmark
 			workbook.SaveAs(filename);
 			PrintTime("closedxml_write() - Save file to disk");			
 		}
+		private void closedxml_read()
+		{
+			const string filename = "closedxml.xlsx";
+
+			_stopWatch.Reset();
+			_stopWatch.Start();	
+			var workbook = new XLWorkbook(filename);
+			_stopWatch.Stop();
+			PrintTime("closedxml_read() - read filestream to EPPlus object");
+
+			_stopWatch.Reset();
+			_stopWatch.Start();				
+			var sht = workbook.Worksheets.Worksheet(worksheetname);
+			_stopWatch.Stop();
+			PrintTime("closedxml_read() - assign ClosedXML.worksheet to variable");
+			
+			//test the performance of filling cells				
+			_stopWatch.Reset();
+			_stopWatch.Start();					
+			Parallel.For(0, _dataTable.Rows.Count, rowIndex => {
+				//DataRow dr = _dataTable.Rows[rowIndex];
+				for (int colIndex = 0;
+					     colIndex < _dataTable.Columns.Count;
+					     colIndex++) {
+					lock (_dataTable.Rows) {
+						_dataTable.Rows[rowIndex][colIndex] = sht.Cell(rowIndex + 1, colIndex + 1).Value.ToString();
+					}
+				}
+			});			
+			_stopWatch.Stop();
+			PrintTime("closedxml_read() - read to memory");
+		}
 		private void epplus_write()
 		{
 			const string filename = "epplus.xlsx";
@@ -201,33 +257,14 @@ namespace excelpackagebenchmark
 				//test the performance of filling cells				
 				_stopWatch.Reset();
 				_stopWatch.Start();			
-				switch (DataSetMethod) {
-					case DataSetDefinition.Array:
-						Parallel.For(0, _arrayDataSet.Length, (index) => {
-							sht.Cells[_arrayDataSet[index].RowNumber, _arrayDataSet[index].ColumnNumber].Value = _arrayDataSet[index].Text;
-						});								
-						break;
-					case DataSetDefinition.List:
-						Parallel.ForEach(_listDataSet, (item) => {
-							sht.Cells[item.RowNumber, item.ColumnNumber].Value = item.Text;
-						});						
-						break;
-					case DataSetDefinition.ConcurrentBag:
-						Parallel.ForEach(_concurrentBagDataSet, (item) => {
-							sht.Cells[item.RowNumber, item.ColumnNumber].Value = item.Text;
-						});
-						break;
-					case DataSetDefinition.DataTable:
-						Parallel.For(0, _dataTable.Rows.Count, rowIndex => {
-							DataRow dr = _dataTable.Rows[rowIndex];
-							for (int colIndex = 0;
+				Parallel.For(0, _dataTable.Rows.Count, rowIndex => {
+					DataRow dr = _dataTable.Rows[rowIndex];
+					for (int colIndex = 0;
 							     colIndex < _dataTable.Columns.Count;
 							     colIndex++) {
-								sht.Cells[rowIndex + 1, colIndex + 1].Value = dr[colIndex];
-							}
-						});	
-						break;
-				}
+						sht.Cells[rowIndex + 1, colIndex + 1].Value = dr[colIndex];
+					}
+				});	
 
 				_stopWatch.Stop();
 				PrintTime("epplus_write() - Fill Cells");
@@ -263,52 +300,18 @@ namespace excelpackagebenchmark
 			
 			_stopWatch.Reset();
 			_stopWatch.Start();				
-			switch (DataSetMethod) {
-				case DataSetDefinition.DataTable:
-					Parallel.For(0, _dataTable.Rows.Count, rowIndex => {
-						DataRow dr = _dataTable.Rows[rowIndex];
-						for (int colIndex = 0;
+
+			Parallel.For(0, _dataTable.Rows.Count, rowIndex => {
+				DataRow dr = _dataTable.Rows[rowIndex];
+				for (int colIndex = 0;
 					     colIndex < _dataTable.Columns.Count;
 					     colIndex++) {
-							lock (_dataTable) {
-								_dataTable.Rows[rowIndex][colIndex] = sht.Cells[rowIndex + 1, colIndex + 1].Text;
-							}
-						}
-					});	
-					break;
-				case DataSetDefinition.ConcurrentBag:
-					_concurrentBagDataSet = new ConcurrentBag<CellDefinition>();
-					//test the performance of reading cells				
-					Parallel.For(0, _dataTable.Rows.Count, rowIndex => {
-						for (int colIndex = 0;
-					     colIndex < _dataTable.Columns.Count;
-					     colIndex++) {
-							CellDefinition cl;
-							cl.RowNumber = rowIndex;
-							cl.ColumnNumber = colIndex;
-							cl.Text = sht.Cells[rowIndex + 1, colIndex + 1].Text;
-							_concurrentBagDataSet.Add(cl);
-						}
-					});	
-					break;
-				case DataSetDefinition.List:
-					_listDataSet = new List<CellDefinition>();
-					//test the performance of reading cells				
-					Parallel.For(0, _dataTable.Rows.Count, rowIndex => {
-						for (int colIndex = 0;
-					     colIndex < _dataTable.Columns.Count;
-					     colIndex++) {
-							CellDefinition cl;
-							cl.RowNumber = rowIndex;
-							cl.ColumnNumber = colIndex;
-							cl.Text = sht.Cells[rowIndex + 1, colIndex + 1].Text;
-							lock(_listDataSet) {
-								_listDataSet.Add(cl);
-							}
-						}
-					});	
-					break;					
-			}
+					lock (_dataTable) {
+						_dataTable.Rows[rowIndex][colIndex] = sht.Cells[rowIndex + 1, colIndex + 1].Text;
+					}
+				}
+			});	
+					
 			_stopWatch.Stop();
 			PrintTime("epplus_read() - read file to memory");
 
@@ -343,74 +346,8 @@ namespace excelpackagebenchmark
 			_stopWatch.Stop();
 			PrintTime("GenerateRandomDataTable()");	
 		}
-		public void GenerateRandomConcurrentBag(int RowCount, int ColumnCount)
-		{
-			_stopWatch.Reset();
-			_stopWatch.Start();					
-			_concurrentBagDataSet = new ConcurrentBag<CellDefinition>();
-
-			Parallel.For(0, RowCount, rowIndex => {
-				for (int colIndex = 0;
-			     colIndex < ColumnCount;
-			     colIndex++) {
-					CellDefinition cl = new CellDefinition();
-					cl.RowNumber = rowIndex + 1;
-					cl.ColumnNumber = colIndex + 1;
-					cl.Text = Guid.NewGuid().ToString();
-					_concurrentBagDataSet.Add(cl);
-				}
-			});
-			_stopWatch.Stop();
-			PrintTime("GenerateRandomConcurrentBag()");						
-					
-		}
-		public void GenerateRandomList(int RowCount, int ColumnCount)
-		{
-			_stopWatch.Reset();
-			_stopWatch.Start();					
-			_listDataSet = new List<CellDefinition>();
-
-			Parallel.For(0, RowCount, rowIndex => {
-				for (int colIndex = 0;
-			     colIndex < ColumnCount;
-			     colIndex++) {
-					CellDefinition cl = new CellDefinition();
-					cl.RowNumber = rowIndex + 1;
-					cl.ColumnNumber = colIndex + 1;
-					cl.Text = Guid.NewGuid().ToString();
-					lock (_listDataSet) {
-						_listDataSet.Add(cl);
-					}
-				}
-			});
-			_stopWatch.Stop();
-			PrintTime("GenerateRandomList()");						
-					
-		}
-		public void GenerateRandomArray(int RowCount, int ColumnCount)
-		{
-			_stopWatch.Reset();
-			_stopWatch.Start();					
-			List<CellDefinition> _localListDataSet = new List<CellDefinition>();
-
-			Parallel.For(0, RowCount, rowIndex => {
-				for (int colIndex = 0;
-			     colIndex < ColumnCount;
-			     colIndex++) {
-					CellDefinition cl = new CellDefinition();
-					cl.RowNumber = rowIndex + 1;
-					cl.ColumnNumber = colIndex + 1;
-					cl.Text = Guid.NewGuid().ToString();
-					lock (_localListDataSet) {
-						_localListDataSet.Add(cl);
-					}
-				}
-			});
-			_arrayDataSet = _localListDataSet.ToArray();
-			_stopWatch.Stop();
-			PrintTime("GenerateRandomArray()");						
-					
-		}
+		
+		
 		public void PrintTime(string message)
 		{
 			TimeSpan ts = _stopWatch.Elapsed;
